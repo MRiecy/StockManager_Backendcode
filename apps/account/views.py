@@ -76,14 +76,18 @@ def get_account_info(request):
                         'can_use_volume': pos.can_use_volume,#可用数量
                         'open_price': pos.open_price,#开仓价
                         'market_value': pos.market_value,#市值
+                        'frozen_volume':pos.frozen_volume,#冻结数量
+                        'on_road_volume':pos.on_road_volume,#在途股份
+                        'yesterday_volume':pos.yesterday_volume,#昨夜拥股
+                        'avg_price':pos.avg_price,#成本价
                     })
             account_list.append({
                 'account_type': asset.account_type,#账号类型
                 'account_id': asset.account_id,#账号
                 'cash': asset.cash,#可用金额
                 'frozen_cash': asset.frozen_cash,#冻结金额
-                'market_value': asset.market_value,#
-                'total_asset': asset.total_asset,#持仓市值
+                'market_value': asset.market_value,#持仓市值
+                'total_asset': asset.total_asset,#总资产
                 'positions': pos_list,
             })
 
