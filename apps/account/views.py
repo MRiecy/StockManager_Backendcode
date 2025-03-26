@@ -38,7 +38,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
 def get_account_info(request):
     try:
         # 创建交易接口实例
-        path = r'D:\01_Software\迅投极速交易终端 睿智融科版\userdata'
+        path = r'E:\迅投极速交易终端 睿智融科版\userdata'
         session_id = int(time.time())
         xt_trader = XtQuantTrader(path, session_id)
         callback = MyXtQuantTraderCallback()
