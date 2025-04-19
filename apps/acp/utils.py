@@ -1,104 +1,70 @@
 import numpy as np
 from datetime import datetime, timedelta
-from xtquant import xtdata
-from .views import init_xt_trader
 
 
 def get_total_shares(stock_code):
     """
     获取股票总股本数据
     """
-    try:
-        # 从迅投平台获取股票基本信息
-        stock_info = xtdata.get_stock_info([stock_code])
-        if stock_info and stock_code in stock_info:
-            return stock_info[stock_code].total_shares
-        return 10000000  # 如果获取失败，返回默认值
-    except Exception as e:
-        print(f"获取{stock_code}总股本数据失败: {str(e)}")
-        return 10000000  # 发生异常时返回默认值
+    # 模拟数据，实际应从数据源获取
+    return 10000000  # 返回1000万股作为默认值
 
 
 def get_operating_assets(account_id):
     """
-    获取账户营运资产
+    获取账户的营运资产
     """
-    try:
-        xt_trader = init_xt_trader()
-        accounts = xt_trader.query_account_infos()
-        for account in accounts:
-            if account.account_id == account_id:
-                asset = xt_trader.query_stock_asset(account)
-                if asset:
-                    return asset.total_asset
-        return 0
-    except Exception as e:
-        print(f"获取账户{account_id}营运资产失败: {str(e)}")
-        return 0
+    # 模拟数据，实际应从数据库获取
+    return 5000000  # 返回500万作为默认值
 
 
 def get_empirical_percentage(account_id):
     """
-    获取账户经验性百分比率
-    这里可以根据实际业务需求设置不同的比率
+    获取经验性百分比率
     """
-    try:
-        # 从配置或数据库中获取经验性百分比率
-        # 这里暂时返回固定值，实际应用中应该从配置或数据库获取
-        return 0.8  # 默认返回80%
-    except Exception as e:
-        print(f"获取账户{account_id}经验性百分比率失败: {str(e)}")
-        return 0.8
+    # 模拟数据，实际应根据业务规则计算
+    return 0.7  # 返回70%作为默认值
 
 
 def get_futures_contract_size(futures_code):
     """
     获取期货合约规模
     """
-    try:
-        # 从迅投平台获取期货合约信息
-        futures_info = xtdata.get_stock_info([futures_code])
-        if futures_info and futures_code in futures_info:
-            return futures_info[futures_code].contract_size
-        
-        # 如果获取失败，使用默认值
-        contract_sizes = {
-            'IF': 300,  # 沪深300指数期货
-            'IC': 200,  # 中证500指数期货
-            'IH': 300,  # 上证50指数期货
-            'T': 10000,  # 10年期国债期货
-            'TF': 10000,  # 5年期国债期货
-            'TS': 10000,  # 2年期国债期货
-        }
-        
-        # 提取期货品种代码
-        for code_prefix in contract_sizes:
-            if futures_code.startswith(code_prefix):
-                return contract_sizes[code_prefix]
-        
-        return 1
-    except Exception as e:
-        print(f"获取{futures_code}合约规模失败: {str(e)}")
-        return 1
+    # 模拟数据，实际应从数据源获取
+    contract_sizes = {
+        'IF': 300,  # 沪深300指数期货
+        'IC': 200,  # 中证500指数期货
+        'IH': 300,  # 上证50指数期货
+        'T': 10000,  # 10年期国债期货
+        'TF': 10000,  # 5年期国债期货
+        'TS': 10000,  # 2年期国债期货
+    }
+    
+    # 提取期货品种代码
+    for code_prefix in contract_sizes:
+        if futures_code.startswith(code_prefix):
+            return contract_sizes[code_prefix]
+    
+    # 默认返回
+    return 1
 
 
 def get_trades(account_id, stock_code):
     """
     获取账户的成交记录
     """
-    try:
-        xt_trader = init_xt_trader()
-        accounts = xt_trader.query_account_infos()
-        for account in accounts:
-            if account.account_id == account_id:
-                # 获取当日成交记录
-                trades = xt_trader.query_stock_trades(account)
-                # 过滤出指定股票的成交记录
-                return [trade for trade in trades if trade.stock_code == stock_code]
-        return []
-    except Exception as e:
-        print(f"获取账户{account_id}的{stock_code}成交记录失败: {str(e)}")
-        return []
+    # 模拟数据，实际应从数据库获取
+    class Trade:
+        def __init__(self, price, volume):
+            self.price = price
+            self.volume = volume
+    
+    # 返回模拟的成交记录
+    return [
+        Trade(100, 100),
+        Trade(101, 200),
+        Trade(99, 150)
+    ]
 
 
 def calculate_market_value(position, asset_type):
