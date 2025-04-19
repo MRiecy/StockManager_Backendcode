@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'rest_framework',  # 添加 DRF
     'corsheaders',  # 允许跨域
     'rest_framework_simplejwt',
+    'account',  # 账户应用
+    'acp',  # 资产分析应用
 ]
 
 

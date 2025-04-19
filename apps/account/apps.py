@@ -20,7 +20,7 @@ class MyAppConfig(AppConfig):
         # 定义初始化 xtdatacenter 的函数
         def init_xtdatacenter():
             # 设置 token
-            xtdc.set_token('72ec19b0dbc472fce966bf078ed91c1382779185')
+            xtdc.set_token('6a9f346cbeb93be0165122d9a2da5872c7c25963')
             # 设置连接池地址
             addr_list = [
                 '115.231.218.73:55310',
