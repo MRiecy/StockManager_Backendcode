@@ -39,3 +39,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Data
+data/*
+!data/README.md
