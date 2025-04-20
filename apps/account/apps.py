@@ -1,17 +1,13 @@
-from django.apps import AppConfig
-
-
-class UserConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'account'
-
-
 # myapp/apps.py
 from django.apps import AppConfig
 import threading
 from xtquant import xtdatacenter as xtdc
 from xtquant import xtdata
-import time
+
+
+class UserConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'account'
 
 class MyAppConfig(AppConfig):
     name = 'account'
