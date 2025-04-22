@@ -3,6 +3,7 @@ import datetime
 import sys
 import traceback
 from django.http import JsonResponse
+from rest_framework.decorators import api_view
 from xtquant import xtdata
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
@@ -34,6 +35,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
     def on_account_status(self, status):
         print(datetime.datetime.now(), sys._getframe().f_code.co_name)
 
+@api_view(['GET'])
 # API 视图：查询所有账户的资产及持仓数据
 def get_account_info(request):
     try:
@@ -80,6 +82,7 @@ def get_account_info(request):
                         'on_road_volume':pos.on_road_volume,#在途股份
                         'yesterday_volume':pos.yesterday_volume,#昨夜拥股
                         'avg_price':pos.avg_price,#成本价
+
                     })
             account_list.append({
                 'account_type': asset.account_type,#账号类型
