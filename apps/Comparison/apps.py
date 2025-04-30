@@ -1,16 +1,20 @@
+from django.apps import AppConfig
+
+
+class UserConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'Comparison'
+
+
 # myapp/apps.py
 from django.apps import AppConfig
 import threading
 from xtquant import xtdatacenter as xtdc
 from xtquant import xtdata
-
-
-class UserConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'account'
+import time
 
 class MyAppConfig(AppConfig):
-    name = 'account'
+    name = 'Comparison'
 
     def ready(self):
         # 定义初始化 xtdatacenter 的函数
