@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from xtquant import xtdata
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
+from django.conf import settings
 
 # 定义交易回调类
 class MyXtQuantTraderCallback(XtQuantTraderCallback):
@@ -39,8 +40,8 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
 # API 视图：查询所有账户的资产及持仓数据
 def get_account_info(request):
     try:
-        # 创建交易接口实例
-        path = r'E:\迅投极速交易终端 睿智融科版\userdata'
+        # 从配置文件中获取迅投路径
+        path = settings.XT_CONFIG['USERDATA_PATH']  # 从 setting 文件获取迅投路径
         session_id = int(time.time())
         xt_trader = XtQuantTrader(path, session_id)
         callback = MyXtQuantTraderCallback()
@@ -82,7 +83,6 @@ def get_account_info(request):
                         'on_road_volume':pos.on_road_volume,#在途股份
                         'yesterday_volume':pos.yesterday_volume,#昨夜拥股
                         'avg_price':pos.avg_price,#成本价
-
                     })
             account_list.append({
                 'account_type': asset.account_type,#账号类型

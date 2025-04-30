@@ -152,3 +152,18 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'  # 或者 'django.contrib.sessions.backends.cached_db'
+
+# 迅投量化配置
+XT_CONFIG = {
+    'USERDATA_PATH': os.getenv('XT_USERDATA_PATH', r'D:\迅投极速交易终端 睿智融科版\userdata'),
+    'API_KEY': os.getenv('XT_API_KEY', ''),
+    'SECRET_KEY': os.getenv('XT_SECRET_KEY', ''),
+    'TOKEN': os.getenv('XT_TOKEN', '3212e214050c53bc5619966f21fd24695531942f'),
+    'ADDR_LIST': [
+        '115.231.218.73:55310',
+        '115.231.218.79:55310',
+        '218.16.123.11:55310',
+        '218.16.123.27:55310'
+    ],
+    'PORT': 58601
+}

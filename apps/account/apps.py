@@ -1,11 +1,12 @@
 # myapp/apps.py
 from django.apps import AppConfig
+from django.conf import settings    # 从setting文件中获取配置
+import xtquant.xtdata as xtdata
+import xtquant.xtdatacenter as xtdc
 import threading
-from xtquant import xtdatacenter as xtdc
-from xtquant import xtdata
 
 
-class UserConfig(AppConfig):
+class AccountConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'account'
 
@@ -16,18 +17,12 @@ class MyAppConfig(AppConfig):
         # 定义初始化 xtdatacenter 的函数
         def init_xtdatacenter():
             # 设置 token
-            xtdc.set_token('3212e214050c53bc5619966f21fd24695531942f')
+            xtdc.set_token(settings.XT_CONFIG['TOKEN'])
             # 设置连接池地址
-            addr_list = [
-                '115.231.218.73:55310',
-                '115.231.218.79:55310',
-                '218.16.123.11:55310',
-                '218.16.123.27:55310'
-            ]
-            xtdc.set_allow_optmize_address(addr_list)
+            xtdc.set_allow_optmize_address(settings.XT_CONFIG['ADDR_LIST'])
             # 初始化（参数根据需要调整）
             xtdc.init(False)
-            port = 58601
+            port = settings.XT_CONFIG['PORT']
             xtdc.listen(port=port)
             print(f"服务启动,开放端口：{port}")
             print('-----连接上了------')
