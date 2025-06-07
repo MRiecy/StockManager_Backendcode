@@ -5,9 +5,43 @@ import traceback
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from xtquant import xtdata
+from xtquant import xtdatacenter as xtdc
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
+from django.conf import settings
 
+
+def ensure_xtdata_connection():
+    """
+    确保XtData连接已正确配置token
+    返回: (bool, str) - 连接是否成功，以及错误消息（如果有）
+    """
+    try:
+        print("正在检查并配置XtData连接...")
+        
+        # 设置token
+        token = settings.XT_CONFIG.get('TOKEN')
+        if not token:
+            return False, "未配置迅投API Token"
+            
+        print(f"使用Token: {token[:10]}...")
+        xtdc.set_token(token)
+        
+        # 设置连接池地址
+        addr_list = settings.XT_CONFIG.get('ADDR_LIST', [])
+        if addr_list:
+            print(f"设置连接地址: {addr_list}")
+            xtdc.set_allow_optmize_address(addr_list)
+        
+        # 检查连接状态
+        servers = xtdata.get_quote_server_status()
+        print(f"数据服务器状态: {servers}")
+        
+        return True, "XtData连接配置成功"
+        
+    except Exception as e:
+        print(f"配置XtData连接失败: {str(e)}")
+        return False, f"配置XtData连接失败: {str(e)}"
 
 # 定义交易回调类
 class MyXtQuantTraderCallback(XtQuantTraderCallback):
@@ -294,29 +328,23 @@ def time_data(request):
             
         print(f"将查询股票: {stock_codes}")
         
-        # 根据据文章中的信息，先下载历史数据，再获取
+        # 直接通过token调用API获取历史数据
         try:
+            # 确保XtData连接已配置
+            is_connected, error_msg = ensure_xtdata_connection()
+            if not is_connected:
+                print(f"XtData连接配置失败: {error_msg}")
+                raise Exception(f"XtData连接配置失败: {error_msg}")
+            
             # 设置开始和结束时间
             end_date = datetime.datetime.now().strftime('%Y%m%d')
             start_date = (datetime.datetime.now() - datetime.timedelta(days=180)).strftime('%Y%m%d')
             
-            print(f"下载历史数据，从 {start_date} 到 {end_date}")
+            print(f"直接通过API获取历史数据，从 {start_date} 到 {end_date}")
             
-            # 使用迅投API下载历史数据
-            for stock_code in stock_codes:
-                # 下载日线数据
-                print(f"正在下载 {stock_code} 的历史数据...")
-                xtdata.download_history_data(
-                    stock_code=stock_code,
-                    period='1d',  # 日线数据
-                    start_time=start_date,
-                    end_time=end_date,
-                    incrementally=True  # 增量下载
-                )
-            
-            # 获取历史数据
-            print("正在获取下载的历史数据...")
-            history_data = xtdata.get_market_data(
+            # 直接通过迅投API获取历史数据，无需下载到本地
+            print("正在通过API直接获取历史数据...")
+            history_data = xtdata.get_market_data_ex(
                 field_list=['close', 'open', 'high', 'low', 'volume'],
                 stock_list=stock_codes,
                 period='1d',

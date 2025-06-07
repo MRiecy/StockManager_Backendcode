@@ -177,7 +177,6 @@ XT_CONFIG = {
         r'G:\迅投极速交易终端睿智融科版\userdata',
         r'G:\迅投极速交易终端\userdata',
         # 用户个人目录的可能路径
-        os.path.join(os.path.expanduser('~'), 'xtquant_userdata'),
         os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端', 'userdata'),
         os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端 睿智融科版', 'userdata'),
         os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端睿智融科版', 'userdata'),
