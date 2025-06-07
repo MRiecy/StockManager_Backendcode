@@ -155,15 +155,58 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'  # 或者 'django.cont
 
 # 迅投量化配置
 XT_CONFIG = {
-    'USERDATA_PATH': os.getenv('XT_USERDATA_PATH', r'D:\迅投极速交易终端 睿智融科版\userdata'),
+    # 用户指定的迅投路径（优先使用）
+    'USERDATA_PATH': r'E:\迅投极速交易终端 睿智融科版\userdata',
+    
+    # 备用路径列表，按优先级排序
+    'USERDATA_PATHS': [
+        r'E:\迅投极速交易终端 睿智融科版\userdata',  # 用户指定的实际路径
+        r'E:\迅投极速交易终端睿智融科版\userdata',   # 备用路径
+        r'D:\迅投极速交易终端 睿智融科版\userdata',
+        r'D:\迅投极速交易终端睿智融科版\userdata',
+        r'C:\迅投极速交易终端 睿智融科版\userdata',
+        r'C:\迅投极速交易终端睿智融科版\userdata',
+        # 其他可能的路径
+        r'E:\迅投极速交易终端\userdata',
+        r'D:\迅投极速交易终端\userdata',
+        r'C:\迅投极速交易终端\userdata',
+        r'F:\迅投极速交易终端 睿智融科版\userdata',
+        r'F:\迅投极速交易终端睿智融科版\userdata',
+        r'F:\迅投极速交易终端\userdata',
+        r'G:\迅投极速交易终端 睿智融科版\userdata',
+        r'G:\迅投极速交易终端睿智融科版\userdata',
+        r'G:\迅投极速交易终端\userdata',
+        # 用户个人目录的可能路径
+        os.path.join(os.path.expanduser('~'), 'xtquant_userdata'),
+        os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端', 'userdata'),
+        os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端 睿智融科版', 'userdata'),
+        os.path.join(os.path.expanduser('~'), 'AppData', 'Local', '迅投极速交易终端睿智融科版', 'userdata'),
+        os.path.join(os.path.expanduser('~'), 'Documents', '迅投极速交易终端', 'userdata'),
+        os.path.join(os.path.expanduser('~'), 'Documents', '迅投极速交易终端 睿智融科版', 'userdata'),
+        os.path.join(os.path.expanduser('~'), 'Documents', '迅投极速交易终端睿智融科版', 'userdata'),
+    ],
+    
+    # API配置信息
     'API_KEY': os.getenv('XT_API_KEY', ''),
     'SECRET_KEY': os.getenv('XT_SECRET_KEY', ''),
-    'TOKEN': os.getenv('XT_TOKEN', '3212e214050c53bc5619966f21fd24695531942f'),
+    
+    # 用户提供的连接token
+    'TOKEN': os.getenv('XT_TOKEN', 'cc409ba91553c061681dc279daa42e498cae374d'),
+    
+    # 迅投数据中心地址列表
     'ADDR_LIST': [
         '115.231.218.73:55310',
         '115.231.218.79:55310',
         '218.16.123.11:55310',
         '218.16.123.27:55310'
     ],
-    'PORT': 58601
+    
+    # 数据服务端口
+    'PORT': 58601,
+    
+    # 连接超时设置
+    'TIMEOUT': 30,
+    
+    # 是否启用调试模式
+    'DEBUG': True
 }
