@@ -209,7 +209,7 @@ def area_comparison(request):
             })
 
         except Exception as e:
-            print(f"处理地区对比数据时发生异常: {str(e)}，将使用模拟数据")
+            print(f"处理交易所对比数据时发生异常: {str(e)}，将使用模拟数据")
             # 尝试停止交易API（如果已初始化）
             try:
                 if 'xt_trader' in locals():
@@ -225,9 +225,9 @@ def area_comparison(request):
 
 def get_mock_area_comparison_data(account_id):
     """
-    生成模拟的地区对比数据
+    生成模拟的交易所对比数据
     """
-    print(f"生成账户 {account_id} 的模拟地区对比数据")
+    print(f"生成账户 {account_id} 的模拟交易所对比数据")
     
     # 模拟地区列表
     regions = ['上海', '深圳', '创业板', '科创板', '北交所', '港股']
