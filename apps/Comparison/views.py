@@ -2,6 +2,7 @@ import time
 import datetime
 import sys
 import traceback
+import random
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from xtquant import xtdata
@@ -74,16 +75,13 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
 @api_view(['GET'])
 def asset_comparison(request):
     try:
-        # 从请求参数中获取账户 ID
-        account_id = request.GET.get('account_id')
-        
         # 是否使用模拟数据（当连接失败时自动使用）
         use_mock_data = request.GET.get('use_mock', 'false').lower() == 'true'
         
         if not use_mock_data:
             try:
                 # 创建交易接口实例
-                path = r'E:\迅投极速交易终端 睿智融科版\userdata'
+                path = r'D:\迅投极速交易终端 睿智融科版\userdata'
                 print(f"尝试使用路径: {path}")
                 session_id = int(time.time())
                 xt_trader = XtQuantTrader(path, session_id)
@@ -102,78 +100,79 @@ def asset_comparison(request):
                 
                 print("迅投交易接口连接成功")
                 
-                # 如果没有提供账户ID，则获取所有账户
-                if not account_id:
-                    accounts = xt_trader.query_account_infos()
-                    if not accounts or len(accounts) == 0:
-                        print("未查询到账户信息")
-                        use_mock_data = True
-                        raise Exception("未查询到账户信息")
-                    # 使用第一个账户的ID
-                    account_id = accounts[0].account_id
-                    print(f"未提供账户ID，使用第一个账户: {account_id}")
-
                 # 查询所有账户信息
-                acc = StockAccount(account_id)
-
-                # 订阅该账户的交易回调
-                print("订阅账户交易回调...")
-                subscribe_result = xt_trader.subscribe(acc)
-                if subscribe_result != 0:
-                    print(f"订阅账户失败，错误码: {subscribe_result}")
+                accounts = xt_trader.query_account_infos()
+                if not accounts or len(accounts) == 0:
+                    print("未查询到账户信息")
                     use_mock_data = True
-                    raise Exception(f"订阅账户失败，错误码: {subscribe_result}")
+                    raise Exception("未查询到账户信息")
 
-                # 查询账户资产信息
-                print("查询账户资产信息...")
-                asset = xt_trader.query_stock_asset(acc)
-                if not asset:
-                    print("未查询到账户资产信息")
-                    use_mock_data = True
-                    raise Exception("未查询到账户资产信息")
+                # 存储所有账户的数据
+                all_accounts_data = []
 
-                # 查询该账户的持仓信息
-                print("查询账户持仓信息...")
-                positions = xt_trader.query_stock_positions(acc)
-                if not positions:
-                    print("未查询到持仓信息")
-                    use_mock_data = True
-                    raise Exception("未查询到持仓信息")
+                # 遍历所有账户
+                for acc in accounts:
+                    account_id = acc.account_id
+                    print(f"处理账户: {account_id}")
 
-                # 提取并计算用户持仓信息
-                pos_list = []
-                total_market_value = asset.market_value  # 总持仓市值
-                for pos in positions:
-                    stock_code = pos.stock_code  # 股票代码
-                    market_value = pos.market_value  # 市值
-                    avg_price = pos.avg_price  # 成本价
-                    latest_price = pos.open_price  # 最新价（假设pos对象有此属性）
+                    # 订阅该账户的交易回调
+                    print(f"订阅账户 {account_id} 交易回调...")
+                    subscribe_result = xt_trader.subscribe(acc)
+                    if subscribe_result != 0:
+                        print(f"订阅账户 {account_id} 失败，错误码: {subscribe_result}")
+                        continue
 
-                    # 计算各支股票的资产占比
-                    asset_ratio = market_value / total_market_value if total_market_value > 0 else 0
+                    # 查询账户资产信息
+                    print(f"查询账户 {account_id} 资产信息...")
+                    asset = xt_trader.query_stock_asset(acc)
+                    if not asset:
+                        print(f"未查询到账户 {account_id} 资产信息，跳过")
+                        continue
 
-                    # 计算当日涨幅（收益率）
-                    daily_return = ((latest_price - avg_price) / avg_price) * 100 if avg_price > 0 else 0
+                    # 查询该账户的持仓信息
+                    print(f"查询账户 {account_id} 持仓信息...")
+                    positions = xt_trader.query_stock_positions(acc)
+                    if not positions:
+                        print(f"未查询到账户 {account_id} 持仓信息，跳过")
+                        continue
 
-                    pos_list.append({
-                        'stock_code': stock_code,  # x轴数据：股票代码
-                        'asset_ratio': round(asset_ratio, 4),  # y轴数据1：资产占比
-                        'market_value': round(market_value, 2),  # y轴数据2：股票市值
-                        'daily_return': round(daily_return, 2)  # y轴数据3：当日涨幅（百分比形式）
+                    # 提取并计算用户持仓信息
+                    pos_list = []
+                    total_market_value = asset.market_value  # 总持仓市值
+                    for pos in positions:
+                        stock_code = pos.stock_code  # 股票代码
+                        market_value = pos.market_value  # 市值
+                        avg_price = pos.avg_price  # 成本价
+                        latest_price = pos.open_price  # 最新价（假设pos对象有此属性）
+
+                        # 计算各支股票的资产占比
+                        asset_ratio = market_value / total_market_value if total_market_value > 0 else 0
+
+                        # 计算当日涨幅（收益率）
+                        daily_return = ((latest_price - avg_price) / avg_price) * 100 if avg_price > 0 else 0
+
+                        pos_list.append({
+                            'stock_code': stock_code,  # x轴数据：股票代码
+                            'asset_ratio': round(asset_ratio, 4),  # y轴数据1：资产占比
+                            'market_value': round(market_value, 2),  # y轴数据2：股票市值
+                            'daily_return': round(daily_return, 2)  # y轴数据3：当日涨幅（百分比形式）
+                        })
+                    
+                    # 添加该账户的数据到结果列表
+                    all_accounts_data.append({
+                        'account_id': account_id,
+                        'total_market_value': round(total_market_value, 2),
+                        'positions': pos_list,
+                        'is_mock': False
                     })
                 
                 # 停止交易API
                 xt_trader.stop()
                 print("已停止交易API")
 
-                # 返回结果，格式与前端期望的一致
+                # 返回所有账户的结果
                 return JsonResponse({
-                    'accounts': [{
-                        'account_id': account_id,
-                        'total_market_value': round(total_market_value, 2),
-                        'positions': pos_list,
-                        'is_mock': False
-                    }]
+                    'accounts': all_accounts_data
                 })
                 
             except Exception as e:
@@ -192,56 +191,66 @@ def asset_comparison(request):
         # 使用模拟数据
         if use_mock_data:
             print("正在生成模拟资产对比数据...")
-            # 模拟的账户ID
-            mock_account_id = account_id or "mock_account_123"
             
-            # 模拟的持仓数据
-            mock_positions = [
-                {
-                    'stock_code': '600000.SH',
-                    'asset_ratio': 0.35,
-                    'market_value': 350000.00,
-                    'daily_return': 2.50
-                },
-                {
-                    'stock_code': '000001.SZ',
-                    'asset_ratio': 0.25,
-                    'market_value': 250000.00,
-                    'daily_return': 1.80
-                },
-                {
-                    'stock_code': '601318.SH',
-                    'asset_ratio': 0.20,
-                    'market_value': 200000.00,
-                    'daily_return': 3.20
-                },
-                {
-                    'stock_code': '002415.SZ',
-                    'asset_ratio': 0.12,
-                    'market_value': 120000.00,
-                    'daily_return': -0.50
-                },
-                {
-                    'stock_code': '300750.SZ',
-                    'asset_ratio': 0.08,
-                    'market_value': 80000.00,
-                    'daily_return': 4.60
-                }
-            ]
+            # 生成多个账户的模拟数据
+            all_accounts_data = []
             
-            # 模拟的总市值
-            mock_total_market_value = 1000000.00
+            # 生成2-3个模拟账户
+            num_accounts = random.randint(2, 3)
+            for i in range(num_accounts):
+                # 模拟的账户ID
+                mock_account_id = f"mock_account_{i+1}"
+                
+                # 模拟的持仓数据
+                mock_positions = [
+                    {
+                        'stock_code': '600000.SH',
+                        'asset_ratio': 0.35,
+                        'market_value': 350000.00,
+                        'daily_return': 2.50
+                    },
+                    {
+                        'stock_code': '000001.SZ',
+                        'asset_ratio': 0.25,
+                        'market_value': 250000.00,
+                        'daily_return': 1.80
+                    },
+                    {
+                        'stock_code': '601318.SH',
+                        'asset_ratio': 0.20,
+                        'market_value': 200000.00,
+                        'daily_return': 3.20
+                    },
+                    {
+                        'stock_code': '002415.SZ',
+                        'asset_ratio': 0.12,
+                        'market_value': 120000.00,
+                        'daily_return': -0.50
+                    },
+                    {
+                        'stock_code': '300750.SZ',
+                        'asset_ratio': 0.08,
+                        'market_value': 80000.00,
+                        'daily_return': 4.60
+                    }
+                ]
+                
+                # 模拟的总市值
+                mock_total_market_value = 1000000.00
+                
+                # 添加模拟账户数据
+                all_accounts_data.append({
+                    'account_id': mock_account_id,
+                    'total_market_value': mock_total_market_value,
+                    'positions': mock_positions,
+                    'is_mock': True
+                })
             
             print("模拟数据生成完成")
             
             # 返回模拟数据
             return JsonResponse({
-                'accounts': [{
-                    'account_id': mock_account_id,
-                    'total_market_value': mock_total_market_value,
-                    'positions': mock_positions,
-                    'is_mock': True
-                }]
+                'accounts': all_accounts_data
             })
 
     except Exception as e:
