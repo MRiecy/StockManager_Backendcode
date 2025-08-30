@@ -1,0 +1,40 @@
+# 生产环境配置示例
+# 复制此文件为 .env 并填入真实配置
+
+# 短信服务配置
+# 选择短信服务提供商: aliyun, tencent, mock
+SMS_PROVIDER=aliyun
+
+# 阿里云短信服务配置
+ALIYUN_ACCESS_KEY_ID=your_aliyun_access_key_id
+ALIYUN_ACCESS_KEY_SECRET=your_aliyun_access_key_secret
+ALIYUN_SMS_SIGN_NAME=股票管理系统
+ALIYUN_SMS_TEMPLATE_CODE=SMS_123456789
+
+# 腾讯云短信服务配置（备选）
+TENCENT_SECRET_ID=your_tencent_secret_id
+TENCENT_SECRET_KEY=your_tencent_secret_key
+TENCENT_SMS_SDK_APP_ID=your_tencent_sdk_app_id
+TENCENT_SMS_SIGN_NAME=股票管理系统
+TENCENT_SMS_TEMPLATE_ID=your_tencent_template_id
+
+# Django配置
+DEBUG=False
+SECRET_KEY=your_production_secret_key_here
+ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+
+# 数据库配置
+DATABASE_URL=postgresql://user:password@localhost:5432/stockmanager
+
+# 迅投配置
+XT_USERDATA_PATH=D:\国金QMT交易端模拟\userdata_mini
+XT_API_KEY=your_xt_api_key
+XT_SECRET_KEY=your_xt_secret_key
+XT_TOKEN=your_xt_token
+
+# 缓存配置
+CACHE_BACKEND=redis://localhost:6379/1
+
+# 日志配置
+LOG_LEVEL=INFO
+LOG_FILE=/var/log/stockmanager/django.log 

@@ -1,0 +1,30 @@
+# 短信服务配置
+# 阿里云短信服务
+ALIYUN_ACCESS_KEY_ID=your_access_key_id
+ALIYUN_ACCESS_KEY_SECRET=your_access_key_secret
+ALIYUN_SMS_SIGN_NAME=your_sign_name
+ALIYUN_SMS_TEMPLATE_CODE=SMS_123456789
+
+# 腾讯云短信服务（备选）
+TENCENT_SECRET_ID=your_secret_id
+TENCENT_SECRET_KEY=your_secret_key
+TENCENT_SMS_SDK_APP_ID=your_sdk_app_id
+TENCENT_SMS_SIGN_NAME=your_sign_name
+TENCENT_SMS_TEMPLATE_ID=your_template_id
+
+# 短信服务选择 (aliyun/tencent)
+SMS_PROVIDER=aliyun
+
+# 开发环境配置
+DEBUG=True
+SECRET_KEY=your_secret_key_here
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# 数据库配置
+DATABASE_URL=sqlite:///db.sqlite3
+
+# 迅投配置
+XT_USERDATA_PATH=D:\国金QMT交易端模拟\userdata_mini
+XT_API_KEY=your_api_key
+XT_SECRET_KEY=your_secret_key
+XT_TOKEN=your_token 
