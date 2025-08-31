@@ -1,0 +1,125 @@
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from .models import UserToken
+
+User = get_user_model()  # 使用Django的标准User模型
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """用户序列化器"""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 
+                 'date_joined', 'last_login', 'is_active']
+        read_only_fields = ['id', 'date_joined', 'last_login']
+
+
+class RegisterSerializer(serializers.Serializer):
+    """注册序列化器 - 简化版"""
+    username = serializers.CharField(
+        max_length=50, 
+        min_length=3,
+        help_text="用户名，3-50个字符"
+    )
+    password = serializers.CharField(
+        max_length=128, 
+        min_length=6, 
+        write_only=True,
+        help_text="密码，至少6位"
+    )
+    nickname = serializers.CharField(
+        max_length=50, 
+        required=False, 
+        allow_blank=True,
+        help_text="昵称（可选）"
+    )
+    phone = serializers.CharField(
+        max_length=11, 
+        required=False, 
+        allow_blank=True,
+        help_text="手机号（可选）"
+    )
+    
+    def validate_username(self, value):
+        """验证用户名是否已存在"""
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("用户名已存在")
+        return value
+    
+    def validate_password(self, value):
+        """验证密码强度"""
+        if len(value) < 6:
+            raise serializers.ValidationError("密码长度至少6位")
+        return value
+
+
+class LoginSerializer(serializers.Serializer):
+    """登录序列化器 - 支持用户名或手机号登录"""
+    username = serializers.CharField(
+        max_length=50,
+        required=False,
+        help_text="用户名"
+    )
+    username_or_phone = serializers.CharField(
+        max_length=50,
+        required=False,
+        help_text="用户名或手机号"
+    )
+    password = serializers.CharField(
+        max_length=128, 
+        write_only=True,
+        help_text="密码"
+    )
+    
+    def validate(self, data):
+        """验证用户名/手机号和密码"""
+        # 支持两种字段名
+        username_or_phone = data.get('username_or_phone') or data.get('username')
+        password = data.get('password')
+        
+        if not username_or_phone:
+            raise serializers.ValidationError("用户名或手机号不能为空")
+        
+        if not password:
+            raise serializers.ValidationError("密码不能为空")
+        
+        # 尝试通过用户名查找
+        try:
+            user = User.objects.get(username=username_or_phone)
+        except User.DoesNotExist:
+            # 尝试通过email查找（如果phone存储在email字段中）
+            try:
+                user = User.objects.get(email=username_or_phone)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("用户名或手机号不存在")
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError("密码错误")
+        
+        data['user'] = user
+        return data
+
+
+class TokenSerializer(serializers.ModelSerializer):
+    """令牌序列化器"""
+    class Meta:
+        model = UserToken
+        fields = ['access_token', 'refresh_token', 'expires_in']
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    """登录响应序列化器"""
+    user = UserSerializer()
+    token = TokenSerializer()
+
+
+class ProfileResponseSerializer(serializers.Serializer):
+    """用户信息响应序列化器"""
+    id = serializers.CharField()
+    username = serializers.CharField()
+    email = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    date_joined = serializers.DateTimeField()
+    last_login = serializers.DateTimeField()
+    is_active = serializers.BooleanField() 

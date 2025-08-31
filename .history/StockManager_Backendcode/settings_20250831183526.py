@@ -52,11 +52,30 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,  # 是否旋转刷新令牌
     'BLACKLIST_AFTER_ROTATION': True,  # 是否黑名单旋转后的刷新令牌
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': 'your_secret_key',  # 用于加密签名
+    'SIGNING_KEY': SECRET_KEY,  # 使用Django的SECRET_KEY
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
-    'USER_ID_FIELD': 'userid',  # 用户的唯一标识字段
+    'USER_ID_FIELD': 'id',  # 使用标准的id字段
+    'USER_ID_CLAIM': 'id',  # JWT token中的字段名也使用id
+}
+
+# REST Framework配置
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
 }
 
 
