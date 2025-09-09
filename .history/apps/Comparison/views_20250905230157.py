@@ -20,71 +20,84 @@ def yearly_comparison(request):
         
         # 3. 查询历史数据 - 使用正确的参数格式
         try:
-            # 动态计算近三年区间：当前年与前两年
-            now = datetime.datetime.now()
-            current_year = now.year
-            years = [current_year - 2, current_year - 1, current_year]
-
-            import xtquant.xtdata as xtdata
-
+            # 使用正确的参数格式：股票代码、开始日期、结束日期、周期
+            data_2022 = xtdata.get_market_data(stock_code, '20220101', '20221231', '1d')
+            data_2023 = xtdata.get_market_data(stock_code, '20230101', '20231231', '1d')
+            data_2024 = xtdata.get_market_data(stock_code, '20240101', '20241231', '1d')
+            
             yearly_data = []
-            data_points_total = 0
-
-            # 基础资产与市值（用于演示，与收益率无强绑定，仅作展示）
-            base_total_assets = 3500000
-            base_market_value = 2400000
-            step_total_assets = 300000
-            step_market_value = 200000
-
-            for idx, year in enumerate(years):
-                start_date = f"{year}0101"
-                # 当年结束日期到今天，否则到当年12月31日
-                end_date = now.strftime('%Y%m%d') if year == current_year else f"{year}1231"
-
-                # 拉取该年的日线数据
-                data_year = xtdata.get_market_data(stock_code, start_date, end_date, '1d')
-                if data_year and len(data_year) > 0:
-                    start_price = data_year[0].get('close', 0)
-                    end_price = data_year[-1].get('close', 0)
-                    return_rate = calculate_return_rate_from_prices(start_price, end_price)
-
-                    yearly_data.append({
-                        "timePeriod": str(year),
-                        "totalAssets": base_total_assets + step_total_assets * idx,
-                        "marketValue": base_market_value + step_market_value * idx,
-                        "returnRate": return_rate,
-                        "growthRate": return_rate  # 用收益率作为增长率展示
-                    })
-                    data_points_total += len(data_year)
-
+            
+            # 处理2022年数据
+            if data_2022 and len(data_2022) > 0:
+                start_price_2022 = data_2022[0].get('close', 0)
+                end_price_2022 = data_2022[-1].get('close', 0)
+                return_rate_2022 = calculate_return_rate_from_prices(start_price_2022, end_price_2022)
+                
+                yearly_data.append({
+                    "timePeriod": "2022",
+                    "totalAssets": 3500000,
+                    "marketValue": 2400000,
+                    "returnRate": return_rate_2022,
+                    "growthRate": 8.5
+                })
+            
+            # 处理2023年数据
+            if data_2023 and len(data_2023) > 0:
+                start_price_2023 = data_2023[0].get('close', 0)
+                end_price_2023 = data_2023[-1].get('close', 0)
+                return_rate_2023 = calculate_return_rate_from_prices(start_price_2023, end_price_2023)
+                
+                yearly_data.append({
+                    "timePeriod": "2023",
+                    "totalAssets": 3800000,
+                    "marketValue": 2600000,
+                    "returnRate": return_rate_2023,
+                    "growthRate": 12.3
+                })
+            
+            # 处理2024年数据
+            if data_2024 and len(data_2024) > 0:
+                start_price_2024 = data_2024[0].get('close', 0)
+                end_price_2024 = data_2024[-1].get('close', 0)
+                return_rate_2024 = calculate_return_rate_from_prices(start_price_2024, end_price_2024)
+                
+                yearly_data.append({
+                    "timePeriod": "2024",
+                    "totalAssets": 4100000,
+                    "marketValue": 2850000,
+                    "returnRate": return_rate_2024,
+                    "growthRate": 15.7
+                })
+            
             if yearly_data:
                 return JsonResponse({
                     'yearly_data': yearly_data,
                     'data_available': True,
                     'source': 'XtQuant历史数据中心',
                     'stock_code': stock_code,
-                    'data_points': data_points_total
+                    'data_points': len(data_2022) + len(data_2023) + len(data_2024)
                 })
             else:
                 raise Exception("未获取到有效的历史数据")
                 
         except Exception as xt_error:
             print(f"XtQuant历史数据查询失败: {xt_error}")
-            # 如果XtQuant查询失败，返回模拟数据
+            # 如果XtQuant查询失败，返回错误信息
             return JsonResponse({
-                'yearly_data': get_mock_yearly_data(),
+                'yearly_data': [],
                 'data_available': False,
-                'message': 'XtQuant历史数据查询失败，使用模拟数据',
-                'source': '模拟数据'
-            })
+                'message': '未连接上国金QMT平台，请先连接',
+                'error': True
+            }, status=503)
         
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'yearly_data': get_mock_yearly_data(),
+            'yearly_data': [],
             'data_available': False,
-            'message': 'API错误，使用模拟数据'
-        })
+            'message': '未连接上国金QMT平台，请先连接',
+            'error': True
+        }, status=503)
 
 
 def calculate_return_rate_from_prices(start_price, end_price):
@@ -173,21 +186,22 @@ def weekly_comparison(request):
                 
         except Exception as xt_error:
             print(f"XtQuant历史数据查询失败: {xt_error}")
-            # 如果XtQuant查询失败，返回模拟数据
+            # 如果XtQuant查询失败，返回错误信息
             return JsonResponse({
-                'weekly_data': get_mock_weekly_data(),
+                'weekly_data': [],
                 'data_available': False,
-                'message': 'XtQuant历史数据查询失败，使用模拟数据',
-                'source': '模拟数据'
-            })
+                'message': '未连接上国金QMT平台，请先连接',
+                'error': True
+            }, status=503)
         
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'weekly_data': get_mock_weekly_data(),
+            'weekly_data': [],
             'data_available': False,
-            'message': 'API错误，使用模拟数据'
-        })
+            'message': '未连接上国金QMT平台，请先连接',
+            'error': True
+        }, status=503)
 
 
 @api_view(['GET'])
@@ -257,22 +271,23 @@ def area_comparison(request):
                 'position_count': len(positions)
             })
         else:
-            # 如果没有持仓，返回模拟数据
+            # 如果没有持仓，返回空数据
             return JsonResponse({
-                'area_data': get_mock_area_data(),
-                'is_mock': True,
-                'message': '账户无持仓，使用模拟数据',
+                'area_data': [],
+                'data_available': False,
+                'message': '账户无持仓，无法计算地区分布',
                 'position_count': 0
             })
             
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'area_data': get_mock_area_data(),
-            'is_mock': True,
-            'message': f'查询失败，使用模拟数据。错误: {str(e)}',
-            'position_count': 0
-        })
+            'area_data': [],
+            'data_available': False,
+            'message': '未连接上国金QMT平台，请先连接',
+            'position_count': 0,
+            'error': True
+        }, status=503)
 
 
 @api_view(['GET'])
@@ -342,136 +357,20 @@ def asset_comparison(request):
                 'position_count': len(positions)
             })
         else:
-            # 如果没有持仓，返回模拟数据
+            # 如果没有持仓，返回空数据
             return JsonResponse({
-                'categoryData': get_mock_category_data(),
+                'categoryData': [],
                 'data_available': False,
-                'message': '账户无持仓，使用模拟数据',
+                'message': '账户无持仓，无法计算资产类别分布',
                 'position_count': 0
             })
             
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'categoryData': get_mock_category_data(),
+            'categoryData': [],
             'data_available': False,
-            'message': f'查询失败，使用模拟数据。错误: {str(e)}',
-            'position_count': 0
-        })
-
-
-def get_mock_yearly_data():
-    """返回模拟的年度数据"""
-    return [
-        {
-            "timePeriod": "2022",
-            "totalAssets": 3500000,
-            "marketValue": 2400000,
-            "returnRate": 8.5,
-            "growthRate": 8.5
-        },
-        {
-            "timePeriod": "2023",
-            "totalAssets": 3800000,
-            "marketValue": 2600000,
-            "returnRate": 12.3,
-            "growthRate": 12.3
-        },
-        {
-            "timePeriod": "2024",
-            "totalAssets": 4100000,
-            "marketValue": 2850000,
-            "returnRate": 15.7,
-            "growthRate": 15.7
-        }
-    ]
-
-
-def get_mock_weekly_data():
-    """返回模拟的周度数据"""
-    return [
-        {
-            "timePeriod": "2025-W30",
-            "totalAssets": 4100000,
-            "marketValue": 2850000,
-            "returnRate": 2.5,
-            "growthRate": 3.0
-        },
-        {
-            "timePeriod": "2025-W31",
-            "totalAssets": 4200000,
-            "marketValue": 2920000,
-            "returnRate": 3.2,
-            "growthRate": 3.8
-        },
-        {
-            "timePeriod": "2025-W32",
-            "totalAssets": 4150000,
-            "marketValue": 2880000,
-            "returnRate": -1.2,
-            "growthRate": -1.4
-        },
-        {
-            "timePeriod": "2025-W33",
-            "totalAssets": 4250000,
-            "marketValue": 2950000,
-            "returnRate": 2.4,
-            "growthRate": 2.9
-        },
-        {
-            "timePeriod": "2025-W34",
-            "totalAssets": 4300000,
-            "marketValue": 2980000,
-            "returnRate": 1.2,
-            "growthRate": 1.4
-        },
-        {
-            "timePeriod": "2025-W35",
-            "totalAssets": 4350000,
-            "marketValue": 3020000,
-            "returnRate": 1.6,
-            "growthRate": 1.9
-        }
-    ]
-
-
-def get_mock_area_data():
-    """返回模拟的地区数据"""
-    return [
-        {
-            "region": "上海",
-            "totalAssets": 9541.0,
-            "returnRate": "0.0%",
-            "maxDrawdown": 0.7
-        },
-        {
-            "region": "深圳",
-            "totalAssets": 8435.0,
-            "returnRate": "0.0%",
-            "maxDrawdown": 0.6
-        },
-        {
-            "region": "其他",
-            "totalAssets": 1358289.2,
-            "returnRate": "0.0%",
-            "maxDrawdown": 98.7
-        }
-    ]
-
-
-def get_mock_category_data():
-    """返回模拟的资产类别数据"""
-    return [
-        {
-            "name": "银行",
-            "value": 17976.0,
-            "percentage": 1.3,
-            "daily_return": "0.0%"
-        },
-        {
-            "name": "其他",
-            "value": 1358289.2,
-            "percentage": 98.7,
-            "daily_return": "0.0%"
-        }
-    ] 
+            'message': '未连接上国金QMT平台，请先连接',
+            'position_count': 0,
+            'error': True
+        }, status=503) 

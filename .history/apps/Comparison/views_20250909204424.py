@@ -70,21 +70,21 @@ def yearly_comparison(request):
                 
         except Exception as xt_error:
             print(f"XtQuant历史数据查询失败: {xt_error}")
-            # 如果XtQuant查询失败，返回模拟数据
+            # XtQuant查询失败，返回错误信息，不再回退模拟数据
             return JsonResponse({
-                'yearly_data': get_mock_yearly_data(),
+                'yearly_data': [],
                 'data_available': False,
-                'message': 'XtQuant历史数据查询失败，使用模拟数据',
-                'source': '模拟数据'
-            })
+                'message': f'XtQuant历史数据查询失败: {xt_error}',
+                'source': 'XtQuant历史数据中心'
+            }, status=502)
         
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'yearly_data': get_mock_yearly_data(),
+            'yearly_data': [],
             'data_available': False,
-            'message': 'API错误，使用模拟数据'
-        })
+            'message': f'API错误: {str(e)}'
+        }, status=500)
 
 
 def calculate_return_rate_from_prices(start_price, end_price):
@@ -173,21 +173,21 @@ def weekly_comparison(request):
                 
         except Exception as xt_error:
             print(f"XtQuant历史数据查询失败: {xt_error}")
-            # 如果XtQuant查询失败，返回模拟数据
+            # XtQuant查询失败，返回错误信息，不回退模拟数据
             return JsonResponse({
-                'weekly_data': get_mock_weekly_data(),
+                'weekly_data': [],
                 'data_available': False,
-                'message': 'XtQuant历史数据查询失败，使用模拟数据',
-                'source': '模拟数据'
-            })
+                'message': f'XtQuant历史数据查询失败: {xt_error}',
+                'source': 'XtQuant历史数据中心'
+            }, status=502)
         
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'weekly_data': get_mock_weekly_data(),
+            'weekly_data': [],
             'data_available': False,
-            'message': 'API错误，使用模拟数据'
-        })
+            'message': f'API错误: {str(e)}'
+        }, status=500)
 
 
 @api_view(['GET'])
@@ -257,22 +257,22 @@ def area_comparison(request):
                 'position_count': len(positions)
             })
         else:
-            # 如果没有持仓，返回模拟数据
+            # 没有持仓，返回空数据，不回退模拟
             return JsonResponse({
-                'area_data': get_mock_area_data(),
-                'is_mock': True,
-                'message': '账户无持仓，使用模拟数据',
+                'area_data': [],
+                'is_mock': False,
+                'message': '账户无持仓',
                 'position_count': 0
             })
             
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
-            'area_data': get_mock_area_data(),
-            'is_mock': True,
-            'message': f'查询失败，使用模拟数据。错误: {str(e)}',
+            'area_data': [],
+            'is_mock': False,
+            'message': f'查询失败: {str(e)}',
             'position_count': 0
-        })
+        }, status=502)
 
 
 @api_view(['GET'])
@@ -342,11 +342,11 @@ def asset_comparison(request):
                 'position_count': len(positions)
             })
         else:
-            # 如果没有持仓，返回模拟数据
+            # 没有持仓，返回空数据，不回退模拟
             return JsonResponse({
-                'categoryData': get_mock_category_data(),
+                'categoryData': [],
                 'data_available': False,
-                'message': '账户无持仓，使用模拟数据',
+                'message': '账户无持仓',
                 'position_count': 0
             })
             

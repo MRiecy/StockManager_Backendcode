@@ -70,13 +70,13 @@ def yearly_comparison(request):
                 
         except Exception as xt_error:
             print(f"XtQuant历史数据查询失败: {xt_error}")
-            # 如果XtQuant查询失败，返回模拟数据
+            # XtQuant查询失败，返回错误信息，不再回退模拟数据
             return JsonResponse({
-                'yearly_data': get_mock_yearly_data(),
+                'yearly_data': [],
                 'data_available': False,
-                'message': 'XtQuant历史数据查询失败，使用模拟数据',
-                'source': '模拟数据'
-            })
+                'message': f'XtQuant历史数据查询失败: {xt_error}',
+                'source': 'XtQuant历史数据中心'
+            }, status=502)
         
     except Exception as e:
         traceback.print_exc()
