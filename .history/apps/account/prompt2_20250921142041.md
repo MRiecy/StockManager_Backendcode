@@ -1,0 +1,299 @@
+好的，针对你当前的金融可视化项目（Vue + Django），结合迅投MiniQMT接口的限制（**历史数据必须先下载到本地，实时行情需订阅**），以及我们讨论出的“轻量级数据库+数据压缩”优化方案（推荐 **DuckDB + Parquet + 按需缓存**），我为你提供一套详细的、可直接作为开发蓝图的伪代码。
+
+这套伪代码将覆盖：
+
+1.  **后端 (Django)**：数据管理、缓存逻辑、API接口。
+3.  **核心逻辑**：如何智能下载、高效存储、无缝拼接、按需返回。
+
+---
+
+### **整体架构伪代码**
+
+```pseudocode
+# =============================
+# 项目: 金融可视化 - 资产对比模块
+# 技术栈: Vue (前端) + Django (后端) + DuckDB/Parquet (数据存储)
+# 核心挑战: 迅投历史数据需本地缓存，实时行情需订阅
+# 解决方案: 分层缓存 + DuckDB + Parquet + 按需加载 + 内存拼接
+# =============================
+
+# ========== 后端 (Django) ==========
+
+# --- 1. 配置文件 (settings.py) ---
+CACHE_ROOT = "/path/to/your/data/cache"  # Parquet文件存储根目录
+MAX_CACHE_SIZE_GB = 2.0  # 最大缓存容量，例如2GB
+CACHE_INDEX_DB = "sqlite:///cache_index.db"  # 用于管理缓存元数据的SQLite数据库
+
+# --- 2. 缓存索引模型 (models.py) ---
+class CacheIndex(models.Model):
+    symbol = models.CharField(max_length=20)      # 股票代码，如 "600519.SH"
+    period = models.CharField(max_length=10)      # 周期，如 "1m", "5m", "1d"
+    start_date = models.DateField()               # 缓存数据的起始日期
+    end_date = models.DateField()                 # 缓存数据的结束日期
+    file_path = models.CharField(max_length=255)  # Parquet文件的绝对路径
+    last_access = models.DateTimeField(auto_now=True)  # 最后访问时间，用于LRU
+    size_bytes = models.BigIntegerField()         # 文件大小（字节）
+
+# --- 3. 核心数据服务 (services.py) ---
+
+import duckdb
+import pandas as pd
+from xtquant import xtdata
+import os
+import threading
+from django.conf import settings
+
+# 全局内存字典，用于存储实时行情 (线程安全需额外处理，此处简化)
+REALTIME_QUOTES = {}  # 结构: { "symbol_period": {latest_data_point} }
+
+def subscribe_realtime_quotes(symbol_list, period):
+    """订阅实时行情，并更新到内存字典"""
+    for symbol in symbol_list:
+        key = f"{symbol}_{period}"
+        # 订阅迅投实时行情
+        xtdata.subscribe_quote(symbol, period=period)
+        # 假设有一个回调函数或轮询机制来更新 REALTIME_QUOTES
+        # 此处简化，实际项目中需用线程或异步任务监听更新
+        # 例如: xtdata.run_in_thread() 或 使用 asyncio
+
+def get_combined_market_data(symbol_list, period, start_time, end_time):
+    """核心函数：获取拼接后的历史+实时数据"""
+    # Step 1: 检查并确保实时行情已订阅
+    subscribe_realtime_quotes(symbol_list, period)
+
+    # Step 2: 初始化最终结果字典
+    combined_data = {}
+
+    for symbol in symbol_list:
+        # Step 3: 检查本地缓存是否满足请求范围
+        cached_data, missing_ranges = check_and_fetch_cached_data(symbol, period, start_time, end_time)
+
+        # Step 4: 如果有缺失范围，触发异步下载
+        if missing_ranges:
+            trigger_async_download(symbol, period, missing_ranges)
+
+        # Step 5: 从DuckDB查询满足范围的历史数据 (cached_data已包含从磁盘读取的部分)
+        hist_df = query_historical_data_from_duckdb(symbol, period, start_time, end_time)
+
+        # Step 6: 从内存中获取最新的实时行情点
+        latest_quote = get_latest_realtime_quote(symbol, period)
+
+        # Step 7: 将实时行情点拼接到历史数据末尾 (如果时间戳更新)
+        if latest_quote is not None and not hist_df.empty:
+            latest_hist_time = hist_df['time'].max()
+            if latest_quote['time'] > latest_hist_time:
+                # 将字典转为DataFrame并拼接
+                latest_df = pd.DataFrame([latest_quote])
+                hist_df = pd.concat([hist_df, latest_df], ignore_index=True)
+
+        # Step 8: 更新缓存访问时间 (用于LRU)
+        update_cache_access_time(symbol, period)
+
+        # Step 9: 将结果存入返回字典
+        combined_data[symbol] = hist_df
+
+    return combined_data
+
+def check_and_fetch_cached_data(symbol, period, req_start, req_end):
+    """检查缓存，返回已缓存的数据范围和缺失的范围"""
+    # 查询缓存索引，找出所有覆盖 [req_start, req_end] 的片段
+    # 例如，可能有多个文件: [2024-01-01, 2024-06-30], [2024-07-01, 2024-12-31]
+    # 如果请求是 [2024-03-01, 2024-09-30]，则缺失范围可能是空，或者需要下载中间部分
+    # 伪代码逻辑：
+    cached_segments = CacheIndex.objects.filter(
+        symbol=symbol, period=period,
+        start_date__lte=req_end, end_date__gte=req_start
+    ).order_by('start_date')
+
+    # 计算已覆盖的连续范围和缺失范围 (逻辑较复杂，需仔细实现)
+    # 简化: 假设我们只检查是否有完全覆盖的单个文件
+    if cached_segments.exists():
+        segment = cached_segments.first() # 简化处理
+        if segment.start_date <= req_start and segment.end_date >= req_end:
+            # 完全覆盖，无需下载
+            return True, []
+        else:
+            # 部分覆盖或未覆盖，计算缺失
+            missing_start = req_start if req_start > segment.end_date else segment.end_date + timedelta(days=1)
+            missing_end = req_end
+            return False, [(missing_start, missing_end)]
+    else:
+        # 完全未缓存
+        return False, [(req_start, req_end)]
+
+def trigger_async_download(symbol, period, missing_ranges):
+    """异步触发历史数据下载"""
+    # 使用Django的异步任务 (如 Celery) 或线程池
+    # 此处用线程简化
+    def download_task():
+        for (start, end) in missing_ranges:
+            # 调用迅投下载函数
+            xtdata.download_history_data(symbol, period, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"))
+            # 下载完成后，将数据转存为Parquet并更新缓存索引
+            save_downloaded_data_to_parquet(symbol, period, start, end)
+            # 检查并清理缓存 (LRU)
+            enforce_cache_limit()
+
+    download_thread = threading.Thread(target=download_task)
+    download_thread.daemon = True
+    download_thread.start()
+
+def save_downloaded_data_to_parquet(symbol, period, start_date, end_date):
+    """将迅投下载的本地数据读取并保存为压缩Parquet"""
+    # 假设迅投下载后数据可通过 get_market_data_ex 且 subscribe=False 读取
+    # 读取刚下载的数据
+    hist_data = xtdata.get_market_data_ex(
+        field_list=['time', 'open', 'high', 'low', 'close', 'volume', 'amount'],
+        stock_list=[symbol],
+        period=period,
+        start_time=start_date.strftime("%Y%m%d"),
+        end_time=end_date.strftime("%Y%m%d"),
+        count=-1,
+        subscribe=False  # 只读本地
+    )
+    df = hist_data[symbol]  # 获取DataFrame
+
+    # 构建文件路径: /cache_root/SYMBOL/PERIOD/YEAR.parquet
+    symbol_dir = os.path.join(settings.CACHE_ROOT, symbol.replace('.', '_'))
+    os.makedirs(symbol_dir, exist_ok=True)
+    file_name = f"{period}_{start_date.year}.parquet"  # 按年分区
+    file_path = os.path.join(symbol_dir, file_name)
+
+    # 使用DuckDB写入Parquet (利用其高压缩)
+    con = duckdb.connect() # 临时连接
+    # 直接写入Parquet，DuckDB会自动应用高效压缩
+    con.execute(f"COPY df TO '{file_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)")
+
+    # 更新缓存索引数据库
+    CacheIndex.objects.create(
+        symbol=symbol,
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+        file_path=file_path,
+        size_bytes=os.path.getsize(file_path)
+    )
+
+def query_historical_data_from_duckdb(symbol, period, start_time, end_time):
+    """从DuckDB查询指定范围的历史数据"""
+    # 根据symbol和period，查找所有相关的Parquet文件
+    # 例如，查询2024-2025的数据，可能需要读取 2024.parquet 和 2025.parquet
+    cache_entries = CacheIndex.objects.filter(
+        symbol=symbol, period=period,
+        start_date__lte=end_time, end_date__gte=start_time
+    )
+
+    dfs = []
+    for entry in cache_entries:
+        # 使用DuckDB直接查询Parquet文件，只选择需要的时间范围
+        query = f"""
+        SELECT * FROM '{entry.file_path}'
+        WHERE time >= {pd.Timestamp(start_time).timestamp()} 
+        AND time <= {pd.Timestamp(end_time).timestamp()}
+        ORDER BY time
+        """
+        con = duckdb.connect()
+        result_df = con.execute(query).df()
+        dfs.append(result_df)
+
+    if dfs:
+        final_df = pd.concat(dfs, ignore_index=True).sort_values('time')
+    else:
+        final_df = pd.DataFrame()  # 返回空DataFrame
+
+    return final_df
+
+def get_latest_realtime_quote(symbol, period):
+    """从内存字典获取最新的实时行情"""
+    key = f"{symbol}_{period}"
+    return REALTIME_QUOTES.get(key, None)  # 返回最新数据点 (字典格式)
+
+def update_cache_access_time(symbol, period):
+    """更新缓存条目的最后访问时间"""
+    CacheIndex.objects.filter(symbol=symbol, period=period).update(last_access=timezone.now())
+
+def enforce_cache_limit():
+    """执行LRU缓存淘汰策略"""
+    total_size = CacheIndex.objects.aggregate(total=Sum('size_bytes'))['total'] or 0
+    max_bytes = settings.MAX_CACHE_SIZE_GB * 1024**3
+
+    while total_size > max_bytes:
+        # 找到最久未使用的条目
+        oldest_entry = CacheIndex.objects.order_by('last_access').first()
+        if oldest_entry:
+            # 删除磁盘文件
+            if os.path.exists(oldest_entry.file_path):
+                os.remove(oldest_entry.file_path)
+            # 删除数据库记录
+            oldest_entry.delete()
+            total_size -= oldest_entry.size_bytes
+        else:
+            break  # 无条目可删
+
+# --- 4. Django API 视图 (views.py) ---
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .services import get_combined_market_data
+import json
+
+class AssetComparisonView(APIView):
+    """资产对比数据API"""
+
+    def post(self, request):
+        # 解析前端请求参数
+        symbols = request.data.get('symbols', [])      # 股票代码列表
+        period = request.data.get('period', '1d')      # K线周期
+        start_time = request.data.get('start_time')    # 开始时间字符串
+        end_time = request.data.get('end_time')        # 结束时间字符串
+
+        # 转换时间格式 (假设前端传 YYYY-MM-DD HH:MM:SS)
+        from datetime import datetime
+        start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S") if start_time else None
+        end_dt = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S") if end_time else datetime.now()
+
+        # 调用核心服务获取数据
+        try:
+            data_dict = get_combined_market_data(symbols, period, start_dt, end_dt)
+            
+            # 将DataFrame转换为前端友好的JSON格式
+            # 例如: { "600519.SH": [{"time": 1234567890, "open": 100.0, ...}, ...], ... }
+            result = {}
+            for symbol, df in data_dict.items():
+                if not df.empty:
+                    # 将时间戳转为前端易处理的格式 (可选)
+                    df['time'] = pd.to_datetime(df['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
+                    result[symbol] = df.to_dict(orient='records')
+                else:
+                    result[symbol] = []
+
+            return Response({"code": 200, "data": result, "message": "Success"})
+
+        except Exception as e:
+            return Response({"code": 500, "message": f"Error: {str(e)}"})
+
+
+
+# ========== 启动与初始化 ==========
+
+# --- 后端启动脚本 (manage.py 或独立脚本) ---
+# 1. 启动Django服务器
+#    python manage.py runserver
+
+
+
+# --- 注意事项 ---
+# 1. 线程安全: REALTIME_QUOTES 的读写在多线程环境下需要加锁 (如 threading.Lock)。
+# 2. 异步任务: trigger_async_download 在生产环境应使用 Celery 等专业队列。
+# 3. 时间处理: 前后端时间格式转换需保持一致。
+# 4. 错误处理: 伪代码中省略了大量异常捕获，实际开发中必须完善。
+# 5. 性能优化: DuckDB查询、Parquet分区策略可根据实际数据量进一步优化。
+
+```
+
+---
+
+**总结:**
+
+这份伪代码提供了一个从**前端请求**到**后端数据处理**再到**前端渲染**的完整闭环。它严格遵循了“**按需下载、DuckDB+Parquet存储、内存拼接实时行情、LRU缓存管理**”的核心思想。
+
+你可以根据这个蓝图，在Django中实现具体的 `models`, `services`, `views`。这套方案能有效解决迅投接口的限制，并提供高性能、低资源占用的数据服务。
