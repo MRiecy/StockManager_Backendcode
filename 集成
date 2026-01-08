@@ -1,0 +1,315 @@
+# 迅投数据对接实现指南
+
+## 文档说明
+
+本指南旨在指导后端开发人员如何通过迅投金融数据接口获取数据，并转换为前端所需的标准API格式。以下是实现每个API接口的详细说明。
+
+---
+
+## 一、前置条件
+
+1. **迅投API访问权限**：确保已获取迅投API的访问凭证（API Key/Token）
+2. **基础配置**：
+   ```python
+   # 配置文件示例 (settings.py)
+   RUI_TOU_API_BASE = "https://api.ruitou.com/v1"
+   RUI_TOU_API_KEY = "YOUR_API_KEY_HERE"
+   ```
+
+---
+
+## 二、API接口实现规范
+
+### 1. 账户信息模块
+**前端要求**：`GET /api/account-info/`
+
+**实现步骤**：
+```python
+# 1. 调用迅投账户信息接口
+account_data = requests.get(
+    f"{RUI_TOU_API_BASE}/account/info",
+    headers={"Authorization": f"Bearer {RUI_TOU_API_KEY}"}
+).json()
+
+# 2. 调用迅投持仓接口
+positions_data = requests.get(
+    f"{RUI_TOU_API_BASE}/positions",
+    params={"account_id": account_data["account_id"]},
+    headers={"Authorization": f"Bearer {RUI_TOU_API_KEY}"}
+).json()
+
+# 3. 数据转换
+response = {
+    "accounts": [{
+        "account_id": account_data["account_id"],
+        "account_type": account_data["account_type"],
+        "total_asset": account_data["total_asset"],
+        "cash": account_data["cash"],
+        "frozen_cash": account_data["frozen_cash"],
+        "market_value": account_data["market_value"],
+        "positions": []
+    }]
+}
+
+# 4. 处理持仓数据
+for pos in positions_data:
+    response["accounts"][0]["positions"].append({
+        "account_id": account_data["account_id"],
+        "account_type": account_data["account_type"],
+        "stock_code": pos["stock_code"],
+        "stock_name": pos["stock_name"],
+        "volume": pos["volume"],
+        "can_use_volume": pos["can_use_volume"],
+        "open_price": pos["current_price"],
+        "market_value": pos["current_price"] * pos["volume"],
+        "frozen_volume": pos["frozen_volume"],
+        "on_road_volume": pos["on_road_volume"],
+        "yesterday_volume": pos["yesterday_volume"],
+        "avg_price": pos["avg_price"]
+    })
+
+# 5. 返回数据
+return JsonResponse(response)
+```
+
+---
+
+### 2. 资产对比模块
+**前端要求**：`GET /api/asset_comparison/?account_id=DEMO000001`
+
+**实现步骤**：
+```python
+# 1. 从缓存或数据库获取账户信息
+account = get_account(account_id)
+
+# 2. 计算资产占比和收益率
+total_market_value = sum(pos["market_value"] for pos in account["positions"])
+for pos in account["positions"]:
+    pos["asset_ratio"] = (pos["market_value"] / total_market_value) * 100
+    pos["daily_return"] = calculate_daily_return(pos["stock_code"])  # 需实现收益率计算
+
+# 3. 返回标准格式
+response = {
+    "asset_data": [
+        {
+            "stock_code": pos["stock_code"],
+            "stock_name": pos["stock_name"],
+            "market_value": pos["market_value"],
+            "asset_ratio": round(pos["asset_ratio"], 2),
+            "daily_return": round(pos["daily_return"], 2)
+        } for pos in account["positions"]
+    ],
+    "positions": response["asset_data"]  # 兼容前端
+}
+
+return JsonResponse(response)
+```
+
+> **关键点**：实现`calculate_daily_return`函数，需调用迅投的行情接口获取当日价格变动
+
+---
+
+### 3. 时间对比模块
+**前端要求**：`GET /api/timecomparison/yearly_comparison/?account_id=DEMO000001`
+
+**实现步骤**：
+```python
+# 1. 获取账户历史数据
+historical_data = get_historical_data(account_id)
+
+# 2. 按年份汇总
+yearly_data = {}
+for date, data in historical_data.items():
+    year = date[:4]
+    if year not in yearly_data:
+        yearly_data[year] = {
+            "totalAssets": 0,
+            "returnRate": 0,
+            "investmentRate": 0
+        }
+    
+    yearly_data[year]["totalAssets"] += data["total_asset"]
+    # 需实现returnRate和investmentRate计算
+
+# 3. 格式化为前端要求
+response = {
+    "yearly_data": [
+        {
+            "year": year,
+            "totalAssets": data["totalAssets"],
+            "returnRate": round(data["returnRate"], 2),
+            "investmentRate": round(data["investmentRate"], 2)
+        } for year, data in yearly_data.items()
+    ]
+}
+
+return JsonResponse(response)
+```
+
+---
+
+### 4. 地区对比模块
+**前端要求**：`GET /api/areacomparsion/area_comparison/?account_id=DEMO000001`
+
+**实现步骤**：
+```python
+# 1. 获取持仓信息
+positions = get_positions(account_id)
+
+# 2. 按地区汇总
+region_data = {}
+for pos in positions:
+    region = get_stock_region(pos["stock_code"])  # 需实现股票地区查询
+    if region not in region_data:
+        region_data[region] = {"totalAssets": 0}
+    
+    region_data[region]["totalAssets"] += pos["market_value"]
+
+# 3. 计算回报率和投资占比
+for region in region_data:
+    region_data[region]["returnRate"] = calculate_region_return(region)  # 实现区域收益率
+    region_data[region]["investmentRate"] = (region_data[region]["totalAssets"] / total_assets) * 100
+
+# 4. 格式化为前端要求
+response = {
+    "region_data": [
+        {
+            "region": region,
+            "totalAssets": data["totalAssets"],
+            "returnRate": f"{data['returnRate']}%",
+            "investmentRate": f"{data['investmentRate']}%"
+        } for region, data in region_data.items()
+    ]
+}
+
+return JsonResponse(response)
+```
+
+---
+
+### 5. 风险阈值模块
+**前端要求**：`GET /api/risk-threshold/assessment/?account_id=DEMO000001&days=30`
+
+**实现步骤**：
+```python
+# 1. 获取历史交易数据
+historical_data = get_historical_data(account_id, days=days)
+
+# 2. 计算风险指标
+max_loss_rate = calculate_max_loss(historical_data)
+volatility = calculate_volatility(historical_data)
+max_drawdown = calculate_max_drawdown(historical_data)
+var = calculate_var(historical_data)
+
+# 3. 状态映射
+def get_risk_status(value, threshold):
+    if value < threshold["normal"]:
+        return "正常"
+    elif value < threshold["warning"]:
+        return "警告"
+    else:
+        return "危险"
+
+# 4. 构建响应
+response = {
+    "account_id": account_id,
+    "max_principal_loss": {
+        "max_loss_rate": round(max_loss_rate, 2),
+        "status": get_risk_status(max_loss_rate, {"normal": 0.5, "warning": 2.0})
+    },
+    "volatility": {
+        "annual_volatility": round(volatility, 2),
+        "status": get_risk_status(volatility, {"normal": 15.0, "warning": 25.0})
+    },
+    # 其他风险指标类似实现
+}
+
+return JsonResponse(response)
+```
+
+---
+
+## 三、关键实现细节
+
+### 1. 迅投接口调用注意事项
+- **速率限制**：迅投API有请求速率限制（通常100次/分钟），需实现请求队列
+- **错误处理**：对迅投API调用失败进行重试（最多3次）
+- **数据缓存**：对高频访问的数据（如账户信息）实现Redis缓存
+
+### 2. 金额与百分比处理
+```python
+# 金额格式化（保留2位小数）
+def format_amount(value):
+    return round(float(value), 2)
+
+# 百分比格式化（保留2位小数）
+def format_percentage(value):
+    return round(float(value), 2)
+```
+
+### 3. 数据转换通用逻辑
+```python
+# 通用数据转换函数
+def convert_stock_data(data):
+    """将迅投原始数据转换为前端所需格式"""
+    return {
+        "stock_code": data["code"],
+        "stock_name": data["name"],
+        "volume": data["volume"],
+        "can_use_volume": data["available_volume"],
+        "open_price": data["current_price"],
+        "market_value": format_amount(data["current_price"] * data["volume"]),
+        "frozen_volume": data["frozen_volume"],
+        "yesterday_volume": data["yesterday_volume"],
+        "avg_price": data["avg_price"]
+    }
+```
+
+---
+
+## 四、测试与验证
+
+### 1. 测试用例
+| 接口 | 测试用例 | 预期结果 |
+|------|----------|----------|
+| 账户信息 | 有效账户ID | 返回完整账户和持仓数据 |
+| 资产对比 | 有效账户ID | 返回资产占比和收益率 |
+| 风险阈值 | 有效账户ID, days=30 | 返回风险指标和状态 |
+
+### 2. 验证工具
+```bash
+# 使用curl测试API
+curl -X GET "http://localhost:8000/api/account-info/"
+```
+
+---
+
+## 五、部署与维护
+
+1. **CORS配置**：确保后端配置允许前端域名（`http://localhost:5173`）
+2. **日志监控**：实现API调用日志，便于排查问题
+3. **版本管理**：所有API接口使用版本号（如`/api/v1/...`）
+
+> **重要提醒**：所有API接口必须返回标准HTTP状态码（200成功，400客户端错误，500服务器错误）
+
+---
+
+## 六、附录：迅投接口映射表
+
+| 前端字段 | 迅投API字段 | 数据来源 |
+|----------|-------------|----------|
+| stock_code | stock_code | 持仓接口 |
+| stock_name | stock_name | 持仓接口 |
+| market_value | current_price * volume | 持仓接口 |
+| asset_ratio | (market_value / total_asset) * 100 | 计算 |
+| daily_return | (today_price - yesterday_price) / yesterday_price | 行情接口 |
+| region | stock_region | 股票信息接口 |
+| annual_volatility | historical_volatility | 历史数据接口 |
+
+---
+
+**文档版本**：v1.0  
+**最后更新**：2024-12-20  
+**联系人**：后端开发团队负责人
+
+> 请根据实际迅投API文档调整接口路径和参数，如有疑问请与金融数据团队确认。

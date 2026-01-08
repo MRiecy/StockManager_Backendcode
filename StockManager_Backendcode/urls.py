@@ -16,10 +16,35 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from apps.Comparison.urls import timecomparison_urlpatterns, areacomparison_urlpatterns
+
+# 策略接口占位符（临时解决404错误）
+@api_view(['GET'])
+def strategies_placeholder(request):
+    """策略接口占位符 - 待实现完整功能"""
+    return JsonResponse({
+        'message': '策略功能待实现',
+        'strategies': [],
+        'status': 'placeholder'
+    })
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('account.urls')),
-    path('api/', include('Comparison.urls')),
+    # 认证模块
+    path('api/auth/', include('apps.auth.urls')),
+    # 账户信息模块
+    path('api/', include('apps.account.urls')),
+    # 资产对比模块
+    path('api/', include('apps.Comparison.urls')),
+    # 时间段对比模块
+    path('api/timecomparison/', include((timecomparison_urlpatterns, 'timecomparison'))),
+    # 分市场对比模块
+    path('api/areacomparsion/', include((areacomparison_urlpatterns, 'areacomparsion'))),
+    # 风险阈值模块
+    path('api/risk-threshold/', include('apps.risk_threshold.urls')),
+    # 策略接口占位符（临时解决404错误）
+    path('api/strategies/', strategies_placeholder, name='strategies'),
 ]
 

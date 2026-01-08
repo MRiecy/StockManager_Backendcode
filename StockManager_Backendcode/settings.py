@@ -41,8 +41,10 @@ INSTALLED_APPS = [
     'rest_framework',  # 添加 DRF
     'corsheaders',  # 允许跨域
     'rest_framework_simplejwt',
-    'account',  # 账户应用
-    'Comparison',  # 资产分析应用
+    'apps.auth',  # 认证应用
+    'apps.account',  # 账户应用
+    'apps.Comparison',  # 资产分析应用
+    'apps.risk_threshold',  # 风险阈值应用
 ]
 
 
@@ -104,10 +106,12 @@ DATABASES = {
 # 跨域配置，允许所有前端访问
 CORS_ALLOW_ALL_ORIGINS = True
 
-from pymongo import MongoClient
-from datetime import datetime
-client = MongoClient('mongodb://81.68.81.245:27017/mydatabase?authSource=admin')
-db = client['admin']  # 使用 admin 数据库
+# MongoDB配置
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://81.68.81.245:27017/mydatabase?authSource=admin')
+MONGODB_DB_NAME = os.getenv('MONGODB_DB_NAME', 'admin')
+
+# 注意：MongoDB连接现在通过 apps.utils.db 模块统一管理
+# 如果需要使用db对象，请使用: from apps.utils.db import db
 
 
 # Password validation
@@ -158,7 +162,7 @@ XT_CONFIG = {
     'USERDATA_PATH': os.getenv('XT_USERDATA_PATH', r'D:\迅投极速交易终端 睿智融科版\userdata'),
     'API_KEY': os.getenv('XT_API_KEY', ''),
     'SECRET_KEY': os.getenv('XT_SECRET_KEY', ''),
-    'TOKEN': os.getenv('XT_TOKEN', '3212e214050c53bc5619966f21fd24695531942f'),
+    'TOKEN': os.getenv('XT_TOKEN', '75ffb232da4ca006f67229c8235e202d76384179'),
     'ADDR_LIST': [
         '115.231.218.73:55310',
         '115.231.218.79:55310',
