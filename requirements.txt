@@ -1,0 +1,6 @@
+Django>=4.2.19
+djangorestframework
+django-cors-headers
+djangorestframework-simplejwt
+xtquant
+pymongo

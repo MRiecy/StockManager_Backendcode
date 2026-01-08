@@ -41,9 +41,9 @@ def init_xtdatacenter_once():
             logger.info('开始初始化迅投数据中心...')
             
             # 设置 token（优先使用运行时Token，否则使用settings中的Token）
-            from apps.utils.token_manager import get_xt_token
-            token = get_xt_token()
-            xtdc.set_token(token)
+            # from apps.utils.token_manager import get_xt_token
+            # token = get_xt_token()
+            xtdc.set_token('166e6b61ab3356d5930e941f0d7de54a80aceb12')
             logger.info('迅投Token已设置')
             
             # 设置连接池地址（从配置文件读取）
@@ -55,9 +55,11 @@ def init_xtdatacenter_once():
             logger.info('迅投数据中心初始化完成')
             
             # 监听端口
-            port = settings.XT_CONFIG['PORT']
-            xtdc.listen(port=port)
-            logger.info(f'迅投服务启动，开放端口：{port}')
+            # port = settings.XT_CONFIG['PORT']
+            # xtdc.listen(port=58601)
+            listen_addr = xtdc.listen(port = 58610)
+            print(f'done, listen_addr:{listen_addr}')
+            # logger.info(f'迅投服务启动，开放端口：{port}')
             
             # 打印连接状态
             try:
@@ -92,4 +94,46 @@ def init_xtdatacenter_once():
 def is_initialized():
     """检查是否已初始化（已尝试初始化）"""
     return _init_attempted
+
+
+def update_xt_token(new_token):
+    """
+    更新已初始化连接的Token
+    
+    如果迅投数据中心已经初始化，此函数会更新Token并重新设置连接
+    这对于在运行时更新Token非常有用（例如从settings.py更新后）
+    
+    参数:
+        new_token: 新的Token值
+    """
+    global _init_attempted
+    
+    if not _init_attempted:
+        # 如果还没有初始化，直接返回（会在初始化时使用新token）
+        logger.info('迅投数据中心尚未初始化，Token将在初始化时使用')
+        return
+    
+    try:
+        with _init_lock:
+            if not _init_attempted:
+                return
+            
+            logger.info('开始更新迅投Token...')
+            
+            # 更新Token
+            xtdc.set_token(new_token)
+            logger.info(f'迅投Token已更新，长度: {len(new_token)}')
+            
+            # 重新设置连接池地址（确保配置是最新的）
+            xtdc.set_allow_optmize_address(settings.XT_CONFIG['ADDR_LIST'])
+            
+            # 注意：xtdc.init() 通常只需要调用一次，但如果需要重新连接
+            # 可以尝试重新初始化（某些情况下可能需要）
+            # 这里先只更新token，如果连接有问题，可能需要重新初始化
+            
+            logger.info('迅投Token更新完成')
+            
+    except Exception as e:
+        logger.error(f'更新迅投Token失败: {str(e)}', exc_info=True)
+        # 不抛出异常，允许系统继续运行
 

@@ -42,17 +42,33 @@ def get_account_info(request):
         account_list = []
         for acc in accounts:
             try:
+                # 兼容不同版本的 xtquant，确保 account_type 是字符串
+                raw_account_type = getattr(acc, 'account_type', 'STOCK')
+                if isinstance(raw_account_type, int):
+                    # 如果是整数，映射回字符串类型
+                    # 2: STOCK, 3: FUTURE (根据 xtquant 惯例，保守处理)
+                    if raw_account_type == 2:
+                        account_type = 'STOCK'
+                    elif raw_account_type == 3:
+                        account_type = 'FUTURE'
+                    else:
+                        account_type = 'STOCK'
+                else:
+                    account_type = str(raw_account_type)
+                
+                account_obj = create_stock_account(acc.account_id, account_type)
+                
                 # 订阅该账户的交易回调
-                subscribe_result = xt_trader.subscribe(acc)
+                subscribe_result = xt_trader.subscribe(account_obj)
                 
                 # 查询账户资产信息
-                asset = xt_trader.query_stock_asset(acc)
+                asset = xt_trader.query_stock_asset(account_obj)
                 if asset is None:
                     logger.warning(f'账户 {acc} 资产信息为空，跳过')
                     continue
                 
                 # 查询该账户的持仓信息
-                positions = xt_trader.query_stock_positions(acc)
+                positions = xt_trader.query_stock_positions(account_obj)
                 
                 # 转换持仓数据格式
                 pos_list = convert_positions(positions, asset.account_id)
@@ -113,16 +129,16 @@ def convert_positions(positions, account_id):
                 'stock_name': str(getattr(pos, 'stock_name', pos.stock_code)),  # 股票名称
                 'volume': int(pos.volume),  # 持仓数量
                 'can_use_volume': int(pos.can_use_volume),  # 可用数量
-                'open_price': float(pos.open_price),  # 开仓价（当前价格）
+                'open_price': float(pos.open_price) if hasattr(pos, 'open_price') else 0.0,  # 开仓价（或当前价格）
                 'market_value': float(pos.market_value),  # 市值
-                'frozen_volume': int(pos.frozen_volume) if pos.frozen_volume else 0,  # 冻结数量
-                'on_road_volume': int(pos.on_road_volume) if pos.on_road_volume else 0,  # 在途股份
-                'yesterday_volume': int(pos.yesterday_volume),  # 昨日持仓
-                'avg_price': float(pos.avg_price),  # 成本价
+                'frozen_volume': int(pos.frozen_volume) if hasattr(pos, 'frozen_volume') and pos.frozen_volume else 0,  # 冻结数量
+                'on_road_volume': int(pos.on_road_volume) if hasattr(pos, 'on_road_volume') and pos.on_road_volume else 0,  # 在途股份
+                'yesterday_volume': int(pos.yesterday_volume) if hasattr(pos, 'yesterday_volume') else 0,  # 昨日持仓
+                'avg_price': float(pos.avg_price) if hasattr(pos, 'avg_price') else 0.0,  # 成本价
             }
             pos_list.append(pos_data)
         except Exception as e:
-            logger.error(f'转换持仓数据失败 {pos.stock_code}: {str(e)}')
+            logger.error(f'转换持仓数据失败 {getattr(pos, "stock_code", "unknown")}: {str(e)}')
             continue
     
     # 按市值降序排序

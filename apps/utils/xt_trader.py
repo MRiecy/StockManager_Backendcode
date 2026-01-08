@@ -133,21 +133,30 @@ def get_xt_trader_connection():
     return xt_trader, True
 
 
-def create_stock_account(account_id):
+def create_stock_account(account_id, account_type='STOCK'):
     """
     创建股票账户对象
     
     参数:
         account_id: 账户ID
+        account_type: 账户类型（默认为'STOCK'，例如'FUTURE'/'CREDIT'）
     
     返回:
         StockAccount: 股票账户对象
     """
-    return StockAccount(account_id)
+    return StockAccount(account_id, account_type)
 
 
 # 为了向后兼容，保留旧的类名
 MyXtQuantTraderCallback = XtQuantTraderCallbackImpl
+
+
+
+
+
+
+
+
 
 
 

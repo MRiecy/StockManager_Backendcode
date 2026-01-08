@@ -159,10 +159,10 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'  # 或者 'django.cont
 
 # 迅投量化配置
 XT_CONFIG = {
-    'USERDATA_PATH': os.getenv('XT_USERDATA_PATH', r'D:\迅投极速交易终端 睿智融科版\userdata'),
+    'USERDATA_PATH': os.getenv('XT_USERDATA_PATH', r'D:\国金QMT交易端模拟\userdata_mini'),
     'API_KEY': os.getenv('XT_API_KEY', ''),
     'SECRET_KEY': os.getenv('XT_SECRET_KEY', ''),
-    'TOKEN': os.getenv('XT_TOKEN', '75ffb232da4ca006f67229c8235e202d76384179'),
+    'TOKEN': os.getenv('XT_TOKEN', '1d7c4315cec647e3b7e5e3efff953ced3b2ea676'),
     'ADDR_LIST': [
         '115.231.218.73:55310',
         '115.231.218.79:55310',
